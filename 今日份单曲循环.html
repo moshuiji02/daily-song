@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日单曲循环 · 华语 Hit Songs</title>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--text:#17181b;--muted:#737780;--line:#dfe2e7;--gold:#d49a27}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif}
+.container{max-width:1500px;margin:auto;padding:22px 14px 45px}
+header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:14px}
+h1{font-size:28px;margin:0}.subtitle{margin-top:5px;color:var(--muted);font-size:14px}
+.toolbar{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 15px;display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px}
+.status-sub{color:var(--muted);font-size:12px;margin-top:3px}
+.legend{display:flex;gap:13px;color:#777;font-size:11px;white-space:nowrap}
+.legend span{display:flex;align-items:center;gap:4px}.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.available{background:#111827}.dot.locked{background:#d7d9dd}.dot.done{background:var(--gold)}
+.bracket-wrap{overflow-x:auto;padding:5px 0 18px}
+.bracket{min-width:1410px;height:620px;display:grid;grid-template-columns:repeat(9,150px);column-gap:7px;position:relative;margin:auto}
+.round{position:relative;height:620px}.round-title{position:absolute;top:0;left:0;right:0;text-align:center;font-size:11px;font-weight:800;letter-spacing:.7px;color:#555;white-space:nowrap}
+.round-title small{font-weight:400;color:#a0a3a8;letter-spacing:0;margin-left:3px}
+.match{position:absolute;left:0;width:150px;height:76px}
+.match-card{position:absolute;left:0;top:0;width:150px;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.035)}
+.match-card.clickable{cursor:pointer}.match-card.clickable:hover{border-color:#9aa0a8;box-shadow:0 4px 12px rgba(0,0,0,.08);transform:translateY(-1px)}
+.match-card.done{border-color:#caa35a}.match-card.locked{opacity:.68;background:#fafafa}
+.match-card.champion-card{border:2px solid var(--gold);box-shadow:0 6px 18px rgba(180,130,20,.15)}
+.slot{height:37px;padding:4px 6px;display:flex;align-items:center;gap:4px;border-bottom:1px solid #eee}.slot:last-child{border-bottom:0}
+.slot.winner{background:#fffaf0}.seed{width:10px;color:#999;font-size:10px}.song{min-width:0;flex:1}
+.title{font-weight:800;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.artist{font-size:9px;color:#777;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick-dot{width:13px;text-align:center;font-weight:800;font-size:11px}.empty{color:#aaa;font-size:9px}
+.round .match:after{content:"";position:absolute;right:-7px;top:37px;width:7px;height:1px;background:#cfd2d7}
+.round:not(.r1):not(.r5) .match:before{content:"";position:absolute;left:-7px;top:18px;width:7px;height:38px;border-top:1px solid #cfd2d7;border-bottom:1px solid #cfd2d7}
+.r2 .match:before{height:76px!important;top:0!important}
+.r3 .match:before{height:228px!important;top:-76px!important}
+.r4 .match:before{height:456px!important;top:-190px!important}
+.r5 .match:before,.r5 .match:after{display:none}
+.right .match:after{left:-7px;right:auto}
+.right .match:before{left:auto;right:-7px}
+.left.r1{grid-column:1}.left.r2{grid-column:2}.left.r3{grid-column:3}.left.r4{grid-column:4}
+.center{grid-column:5}.right.r4{grid-column:6}.right.r3{grid-column:7}.right.r2{grid-column:8}.right.r1{grid-column:9}
+
+.final{display:none;text-align:center;background:#fff;border:1px solid var(--line);border-radius:18px;padding:32px 18px;margin:10px auto 20px;max-width:620px}
+.final.show{display:block}.trophy{font-size:50px}.final-label{font-size:10px;letter-spacing:3px;color:#9a7a32;font-weight:800}
+.final h2{font-size:32px;margin:8px 0 3px}.final .artist{font-size:17px;color:#70747c}
+.hint{color:#888;line-height:1.8;margin:15px 0 0}.history{margin-top:4px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+.history summary{cursor:pointer;font-weight:700;font-size:13px}.history-list{color:#737780;font-size:12px;line-height:1.8;margin-top:8px}.note{margin-top:10px;color:#999;font-size:11px}
+.credit{
+  text-align:center;
+  color:#aaa;
+  font-size:11px;
+  margin-top:18px;
+  letter-spacing:.3px;
+}
+@media(max-width:900px){.toolbar{align-items:flex-start;flex-direction:column}.legend{white-space:normal;flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<div class="container">
+<header><div><h1>🎵 今日单曲循环</h1><div class="subtitle">歌曲随日期改变，每天32首</div></div></header>
+<div class="toolbar"><div><strong id="statusTitle">选择你今天的歌</strong><div class="status-sub" id="statusSub">不用弹窗。直接点击主页面中的歌曲即可晋级。 · 数据库 850 首</div></div><div class="legend"><span><i class="dot available"></i>可选择</span><span><i class="dot locked"></i>等待上轮结果</span><span><i class="dot done"></i>已决出</span></div></div>
+<div class="bracket-wrap"><div class="bracket" id="bracket"></div></div>
+<div id="final" class="final"><div class="trophy">🏆</div><div class="final-label">TODAY'S LOOP SONG</div><h2 id="championTitle"></h2><div class="artist" id="championArtist"></div><div class="hint">恭喜它成为今天的唯一真神。建议：今天剩下的时间就循环它，别问为什么。😎</div></div>
+<div class="history"><details><summary>淘汰赛记录</summary><div id="historyList" class="history-list">尚未开始。</div></details><div class="note"></div></div>
+<div class="credit">Designed by 墨水迹</div>
+</div>
+  <script>
+const SONG_DATABASE=[
+
+  {title:"月亮代表我的心",artist:"邓丽君",year:null},
+  {title:"童年",artist:"罗大佑",year:null},
+  {title:"山丘",artist:"李宗盛",year:null},
+  {title:"吻别",artist:"张学友",year:null},
+  {title:"忘情水",artist:"刘德华",year:null},
+  {title:"一场游戏一场梦",artist:"王杰",year:null},
+  {title:"讲不出再见",artist:"谭咏麟",year:null},
+  {title:"沉默是金",artist:"张国荣",year:null},
+  {title:"女人花",artist:"梅艳芳",year:null},
+  {title:"海阔天空",artist:"Beyond",year:null},
+  {title:"偏偏喜欢你",artist:"陈百强",year:null},
+  {title:"被遗忘的时光",artist:"蔡琴",year:null},
+  {title:"男儿当自强",artist:"林子祥",year:null},
+  {title:"潇洒走一回",artist:"叶倩文",year:null},
+  {title:"至少还有你",artist:"林忆莲",year:null},
+  {title:"红豆",artist:"王菲",year:null},
+  {title:"朋友",artist:"周华健",year:null},
+  {title:"其实你不懂我的心",artist:"童安格",year:null},
+  {title:"大约在冬季",artist:"齐秦",year:null},
+  {title:"我很丑可是我很温柔",artist:"赵传",year:null},
+  {title:"酒干倘卖无",artist:"苏芮",year:null},
+  {title:"我是不是你最疼爱的人",artist:"潘越云",year:null},
+  {title:"橄榄树",artist:"齐豫",year:null},
+  {title:"追梦人",artist:"凤飞飞",year:null},
+  {title:"冬季到台北来看雨",artist:"孟庭苇",year:null},
+  {title:"领悟",artist:"辛晓琪",year:null},
+  {title:"爱如潮水",artist:"张信哲",year:null},
+  {title:"突然的自我",artist:"伍佰",year:null},
+  {title:"心太软",artist:"任贤齐",year:null},
+  {title:"用心良苦",artist:"张宇",year:null},
+  {title:"水手",artist:"郑智化",year:null},
+  {title:"情非得已",artist:"庾澄庆",year:null},
+  {title:"爱，很简单",artist:"陶喆",year:null},
+  {title:"七里香",artist:"周杰伦",year:null},
+  {title:"江南",artist:"林俊杰",year:null},
+  {title:"十年",artist:"陈奕迅",year:null},
+  {title:"温柔",artist:"五月天",year:null},
+  {title:"隐形的翅膀",artist:"张韶涵",year:null},
+  {title:"勇气",artist:"梁静茹",year:null},
+  {title:"遇见",artist:"孙燕姿",year:null},
+  {title:"盛夏的果实",artist:"莫文蔚",year:null},
+  {title:"可惜我是水瓶座",artist:"杨千嬅",year:null},
+  {title:"好心分手",artist:"卢巧音",year:null},
+  {title:"千千阙歌",artist:"陈慧娴",year:null},
+  {title:"顺流逆流",artist:"徐小凤",year:null},
+  {title:"倒带",artist:"蔡依林",year:null},
+  {title:"唯一",artist:"王力宏",year:null},
+  {title:"特别的人",artist:"方大同",year:null},
+  {title:"姐姐妹妹站起来",artist:"陶晶莹",year:null},
+  {title:"小情歌",artist:"苏打绿",year:null},
+  {title:"宝贝",artist:"张悬",year:null},
+  {title:"旅行的意义",artist:"陈绮贞",year:null},
+  {title:"红色高跟鞋",artist:"蔡健雅",year:null},
+  {title:"小幸运",artist:"田馥甄",year:null},
+  {title:"泡沫",artist:"邓紫棋",year:null},
+  {title:"如果有来生",artist:"谭维维",year:null},
+  {title:"平凡之路",artist:"朴树",year:null},
+  {title:"蓝莲花",artist:"许巍",year:null},
+  {title:"春天里",artist:"汪峰",year:null},
+  {title:"一无所有",artist:"崔健",year:null},
+  {title:"无地自容",artist:"黑豹",year:null},
+  {title:"梦回唐朝",artist:"唐朝",year:null},
+  {title:"灰姑娘",artist:"郑钧",year:null},
+  {title:"最美",artist:"羽泉",year:null},
+  {title:"一生有你",artist:"水木年华",year:null},
+  {title:"同桌的你",artist:"老狼",year:null},
+  {title:"成都",artist:"赵雷",year:null},
+  {title:"贝加尔湖畔",artist:"李健",year:null},
+  {title:"消愁",artist:"毛不易",year:null},
+  {title:"模特",artist:"李荣浩",year:null},
+  {title:"玫瑰花的葬礼",artist:"许嵩",year:null},
+  {title:"演员",artist:"薛之谦",year:null},
+  {title:"最浪漫的事",artist:"赵咏华",year:null},
+  {title:"健康歌",artist:"范晓萱",year:null},
+  {title:"第一次爱的人",artist:"王心凌",year:null},
+  {title:"画心",artist:"张靓颖",year:null},
+  {title:"黄昏",artist:"周传雄",year:null},
+  {title:"童",artist:"光良",year:null},
+  {title:"门没锁",artist:"品冠",year:null},
+  {title:"哭过就好了",artist:"梁文音",year:null},
+  {title:"依恋",artist:"蔡淳佳",year:null},
+  {title:"下一个天亮",artist:"郭静",year:null},
+  {title:"一个像夏天一个像秋天",artist:"范玮琪",year:null},
+  {title:"梁山伯与茱丽叶",artist:"卓文萱",year:null},
+  {title:"你是我的眼",artist:"萧煌奇",year:null},
+  {title:"没那么简单",artist:"黄小琥",year:null},
+  {title:"说谎",artist:"林宥嘉",year:null},
+  {title:"爱一个人好难",artist:"苏永康",year:null},
+  {title:"情人",artist:"杜德伟",year:null},
+  {title:"独家记忆",artist:"陈小春",year:null},
+  {title:"爱与诚",artist:"古巨基",year:null},
+  {title:"我的骄傲",artist:"容祖儿",year:null},
+  {title:"值得",artist:"郑秀文",year:null},
+  {title:"喜帖街",artist:"谢安琪",year:null},
+  {title:"你还爱我吗",artist:"方皓玟",year:null},
+  {title:"星语心愿",artist:"张柏芝",year:null},
+  {title:"后来",artist:"刘若英",year:null},
+  {title:"短发",artist:"梁咏琪",year:null},
+  {title:"红绿灯",artist:"郑融",year:null},
+  {title:"静止",artist:"杨乃文",year:null},
+  {title:"鸭子",artist:"苏慧伦",year:null},
+  {title:"如果云知道",artist:"许茹芸",year:null},
+  {title:"相见恨晚",artist:"彭佳慧",year:null},
+  {title:"怎样",artist:"戴佩妮",year:null},
+  {title:"七友",artist:"梁汉文",year:null},
+  {title:"痴心绝对",artist:"李圣杰",year:null},
+  {title:"死了都要爱",artist:"信乐团",year:null},
+  {title:"当",artist:"动力火车",year:null},
+  {title:"有多少爱可以重来",artist:"迪克牛仔",year:null},
+  {title:"梦田",artist:"齐豫/潘越云",year:null},
+  {title:"狮子山下",artist:"罗文",year:null},
+  {title:"鲁冰花",artist:"甄妮",year:null},
+  {title:"天蚕变",artist:"关正杰",year:null},
+  {title:"陌上归人",artist:"区瑞强",year:null},
+  {title:"甜蜜蜜",artist:"邓丽君",year:null},
+  {title:"恋曲1990",artist:"罗大佑",year:null},
+  {title:"凡人歌",artist:"李宗盛",year:null},
+  {title:"一路上有你",artist:"张学友",year:null},
+  {title:"中国人",artist:"刘德华",year:null},
+  {title:"忘了你忘了我",artist:"王杰",year:null},
+  {title:"朋友",artist:"谭咏麟",year:null},
+  {title:"风继续吹",artist:"张国荣",year:null},
+  {title:"亲密爱人",artist:"梅艳芳",year:null},
+  {title:"光辉岁月",artist:"Beyond",year:null},
+  {title:"一生何求",artist:"陈百强",year:null},
+  {title:"恰似你的温柔",artist:"蔡琴",year:null},
+  {title:"真的汉子",artist:"林子祥",year:null},
+  {title:"祝我幸福",artist:"叶倩文",year:null},
+  {title:"伤痕",artist:"林忆莲",year:null},
+  {title:"容易受伤的女人",artist:"王菲",year:null},
+  {title:"花心",artist:"周华健",year:null},
+  {title:"明天你是否依然爱我",artist:"童安格",year:null},
+  {title:"狼",artist:"齐秦",year:null},
+  {title:"我是一只小小鸟",artist:"赵传",year:null},
+  {title:"跟着感觉走",artist:"苏芮",year:null},
+  {title:"野百合也有春天",artist:"潘越云",year:null},
+  {title:"船歌",artist:"齐豫",year:null},
+  {title:"掌声响起",artist:"凤飞飞",year:null},
+  {title:"你看你看月亮的脸",artist:"孟庭苇",year:null},
+  {title:"味道",artist:"辛晓琪",year:null},
+  {title:"过火",artist:"张信哲",year:null},
+  {title:"挪威的森林",artist:"伍佰",year:null},
+  {title:"伤心太平洋",artist:"任贤齐",year:null},
+  {title:"雨一直下",artist:"张宇",year:null},
+  {title:"星星点灯",artist:"郑智化",year:null},
+  {title:"让我一次爱个够",artist:"庾澄庆",year:null},
+  {title:"普通朋友",artist:"陶喆",year:null},
+  {title:"晴天",artist:"周杰伦",year:null},
+  {title:"她说",artist:"林俊杰",year:null},
+  {title:"K歌之王",artist:"陈奕迅",year:null},
+  {title:"倔强",artist:"五月天",year:null},
+  {title:"遗失的美好",artist:"张韶涵",year:null},
+  {title:"可惜不是你",artist:"梁静茹",year:null},
+  {title:"开始懂了",artist:"孙燕姿",year:null},
+  {title:"阴天",artist:"莫文蔚",year:null},
+  {title:"少女的祈祷",artist:"杨千嬅",year:null},
+  {title:"三角志",artist:"卢巧音",year:null},
+  {title:"飘雪",artist:"陈慧娴",year:null},
+  {title:"风的季节",artist:"徐小凤",year:null},
+  {title:"日不落",artist:"蔡依林",year:null},
+  {title:"你不在",artist:"王力宏",year:null},
+  {title:"爱爱爱",artist:"方大同",year:null},
+  {title:"太委屈",artist:"陶晶莹",year:null},
+  {title:"无与伦比的美丽",artist:"苏打绿",year:null},
+  {title:"喜欢",artist:"张悬",year:null},
+  {title:"鱼",artist:"陈绮贞",year:null},
+  {title:"陌生人",artist:"蔡健雅",year:null},
+  {title:"你就不要想起我",artist:"田馥甄",year:null},
+  {title:"光年之外",artist:"邓紫棋",year:null},
+  {title:"如果我没有爱过",artist:"谭维维",year:null},
+  {title:"生如夏花",artist:"朴树",year:null},
+  {title:"旅行",artist:"许巍",year:null},
+  {title:"存在",artist:"汪峰",year:null},
+  {title:"花房姑娘",artist:"崔健",year:null},
+  {title:"Don't Break My Heart",artist:"黑豹",year:null},
+  {title:"国际歌",artist:"唐朝",year:null},
+  {title:"赤裸裸",artist:"郑钧",year:null},
+  {title:"冷酷到底",artist:"羽泉",year:null},
+  {title:"在他乡",artist:"水木年华",year:null},
+  {title:"睡在我上铺的兄弟",artist:"老狼",year:null},
+  {title:"南方姑娘",artist:"赵雷",year:null},
+  {title:"风吹麦浪",artist:"李健",year:null},
+  {title:"像我这样的人",artist:"毛不易",year:null},
+  {title:"年少有为",artist:"李荣浩",year:null},
+  {title:"雅俗共赏",artist:"许嵩",year:null},
+  {title:"丑八怪",artist:"薛之谦",year:null},
+  {title:"求婚",artist:"赵咏华",year:null},
+  {title:"我要我们在一起",artist:"范晓萱",year:null},
+  {title:"当你",artist:"王心凌",year:null},
+  {title:"如果这就是爱情",artist:"张靓颖",year:null},
+  {title:"寂寞沙洲冷",artist:"周传雄",year:null},
+  {title:"第一次",artist:"光良",year:null},
+  {title:"我以为",artist:"品冠",year:null},
+  {title:"最幸福的事",artist:"梁文音",year:null},
+  {title:"陪我看日出",artist:"蔡淳佳",year:null},
+  {title:"心墙",artist:"郭静",year:null},
+  {title:"可不可以不勇敢",artist:"范玮琪",year:null},
+  {title:"被你爱过我很快乐",artist:"卓文萱",year:null},
+  {title:"末班车",artist:"萧煌奇",year:null},
+  {title:"不只是朋友",artist:"黄小琥",year:null},
+  {title:"浪费",artist:"林宥嘉",year:null},
+  {title:"男人不该让女人流泪",artist:"苏永康",year:null},
+  {title:"忘情号",artist:"杜德伟",year:null},
+  {title:"相依为命",artist:"陈小春",year:null},
+  {title:"必杀技",artist:"古巨基",year:null},
+  {title:"心淡",artist:"容祖儿",year:null},
+  {title:"终身美丽",artist:"郑秀文",year:null},
+  {title:"钟无艳",artist:"谢安琪",year:null},
+  {title:"分手总约在雨天",artist:"方皓玟",year:null},
+  {title:"任何天气",artist:"张柏芝",year:null},
+  {title:"很爱很爱你",artist:"刘若英",year:null},
+  {title:"胆小鬼",artist:"梁咏琪",year:null},
+  {title:"终身学习",artist:"郑融",year:null},
+  {title:"祝我幸福",artist:"杨乃文",year:null},
+  {title:"柠檬树",artist:"苏慧伦",year:null},
+  {title:"独角戏",artist:"许茹芸",year:null},
+  {title:"大龄女子",artist:"彭佳慧",year:null},
+  {title:"你要的爱",artist:"戴佩妮",year:null},
+  {title:"缠绵游戏",artist:"梁汉文",year:null},
+  {title:"手放开",artist:"李圣杰",year:null},
+  {title:"海阔天空",artist:"信乐团",year:null},
+  {title:"忠孝东路走九遍",artist:"动力火车",year:null},
+  {title:"三万英尺",artist:"迪克牛仔",year:null},
+  {title:"最爱",artist:"齐豫/潘越云",year:null},
+  {title:"铁血丹心",artist:"罗文",year:null},
+  {title:"海上花",artist:"甄妮",year:null},
+  {title:"大地恩情",artist:"关正杰",year:null},
+  {title:"爱在阳光空气中",artist:"区瑞强",year:null},
+  {title:"小城故事",artist:"邓丽君",year:null},
+  {title:"光阴的故事",artist:"罗大佑",year:null},
+  {title:"爱的代价",artist:"李宗盛",year:null},
+  {title:"她来听我的演唱会",artist:"张学友",year:null},
+  {title:"冰雨",artist:"刘德华",year:null},
+  {title:"安妮",artist:"王杰",year:null},
+  {title:"一生中最爱",artist:"谭咏麟",year:null},
+  {title:"当年情",artist:"张国荣",year:null},
+  {title:"似是故人来",artist:"梅艳芳",year:null},
+  {title:"真的爱你",artist:"Beyond",year:null},
+  {title:"念亲恩",artist:"陈百强",year:null},
+  {title:"你的眼神",artist:"蔡琴",year:null},
+  {title:"分分钟需要你",artist:"林子祥",year:null},
+  {title:"曾经心痛",artist:"叶倩文",year:null},
+  {title:"爱上一个不回家的人",artist:"林忆莲",year:null},
+  {title:"我愿意",artist:"王菲",year:null},
+  {title:"让我欢喜让我忧",artist:"周华健",year:null},
+  {title:"忘不了",artist:"童安格",year:null},
+  {title:"外面的世界",artist:"齐秦",year:null},
+  {title:"爱要怎么说出口",artist:"赵传",year:null},
+  {title:"亲爱的小孩",artist:"苏芮",year:null},
+  {title:"谢谢你曾经爱我",artist:"潘越云",year:null},
+  {title:"女人与小孩",artist:"齐豫",year:null},
+  {title:"我是一片云",artist:"凤飞飞",year:null},
+  {title:"风中有朵雨做的云",artist:"孟庭苇",year:null},
+  {title:"俩俩相忘",artist:"辛晓琪",year:null},
+  {title:"别怕我伤心",artist:"张信哲",year:null},
+  {title:"浪人情歌",artist:"伍佰",year:null},
+  {title:"天涯",artist:"任贤齐",year:null},
+  {title:"月亮惹的祸",artist:"张宇",year:null},
+  {title:"堕落天使",artist:"郑智化",year:null},
+  {title:"热情的沙漠",artist:"庾澄庆",year:null},
+  {title:"飞机场的10:30",artist:"陶喆",year:null},
+  {title:"安静",artist:"周杰伦",year:null},
+  {title:"可惜没如果",artist:"林俊杰",year:null},
+  {title:"浮夸",artist:"陈奕迅",year:null},
+  {title:"知足",artist:"五月天",year:null},
+  {title:"欧若拉",artist:"张韶涵",year:null},
+  {title:"会呼吸的痛",artist:"梁静茹",year:null},
+  {title:"我怀念的",artist:"孙燕姿",year:null},
+  {title:"他不爱我",artist:"莫文蔚",year:null},
+  {title:"小城大事",artist:"杨千嬅",year:null},
+  {title:"色与情",artist:"卢巧音",year:null},
+  {title:"人生何处不相逢",artist:"陈慧娴",year:null},
+  {title:"每一步",artist:"徐小凤",year:null},
+  {title:"天空",artist:"蔡依林",year:null},
+  {title:"大城小爱",artist:"王力宏",year:null},
+  {title:"三人游",artist:"方大同",year:null},
+  {title:"离开我",artist:"陶晶莹",year:null},
+  {title:"我好想你",artist:"苏打绿",year:null},
+  {title:"模样",artist:"张悬",year:null},
+  {title:"九份的咖啡店",artist:"陈绮贞",year:null},
+  {title:"达尔文",artist:"蔡健雅",year:null},
+  {title:"寂寞寂寞就好",artist:"田馥甄",year:null},
+  {title:"来自天堂的魔鬼",artist:"邓紫棋",year:null},
+  {title:"乌兰巴托的夜",artist:"谭维维",year:null},
+  {title:"那些花儿",artist:"朴树",year:null},
+  {title:"曾经的你",artist:"许巍",year:null},
+  {title:"怒放的生命",artist:"汪峰",year:null},
+  {title:"假行僧",artist:"崔健",year:null},
+  {title:"光芒之神",artist:"黑豹",year:null},
+  {title:"飞翔鸟",artist:"唐朝",year:null},
+  {title:"回到拉萨",artist:"郑钧",year:null},
+  {title:"奔跑",artist:"羽泉",year:null},
+  {title:"启程",artist:"水木年华",year:null},
+  {title:"恋恋风尘",artist:"老狼",year:null},
+  {title:"理想",artist:"赵雷",year:null},
+  {title:"假如爱有天意",artist:"李健",year:null},
+  {title:"平凡的一天",artist:"毛不易",year:null},
+  {title:"不将就",artist:"李荣浩",year:null},
+  {title:"有何不可",artist:"许嵩",year:null},
+  {title:"认真的雪",artist:"薛之谦",year:null},
+];
+let slots=[],history=[];
+function dateSeed(){
+  const d=new Date();
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
+  const key=`${y}-${m}-${day}`;
+  let h=2166136261;
+  for(let i=0;i<key.length;i++){h^=key.charCodeAt(i);h=Math.imul(h,16777619)}
+  return h>>>0;
+}
+function seededRandom(seed){
+  let x=seed>>>0;
+  return function(){
+    x+=0x6D2B79F5;
+    let t=x;
+    t=Math.imul(t^(t>>>15),t|1);
+    t^=t+Math.imul(t^(t>>>7),t|61);
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+}
+function shuffleByDate(arr){
+  const a=[...arr],rand=seededRandom(dateSeed());
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+  return a;
+}
+function initTournament(){
+  const picked=shuffleByDate(SONG_DATABASE).slice(0,32);
+  slots=Array(63).fill(null);
+  picked.forEach((s,i)=>slots[i]=s);
+  history=[];
+  document.getElementById("final").classList.remove("show");
+  document.getElementById("historyList").textContent="尚未开始。";
+  renderBracket();
+}
+function songText(s){return `<div class="title">${escapeHtml(s.title)}</div><div class="artist">${escapeHtml(s.artist)}</div>`}
+function getMatchSongs(mi){
+  if(mi<16)return [slots[mi*2],slots[mi*2+1]];
+  if(mi<24){let x=(mi-16)*2;return [slots[32+x],slots[32+x+1]]}
+  if(mi<28){let x=(mi-24)*2;return [slots[48+x],slots[48+x+1]]}
+  if(mi<30){let x=(mi-28)*2;return [slots[56+x],slots[56+x+1]]}
+  return [slots[60],slots[61]];
+}
+function matchCard(mi,a,b){
+  const wi=32+mi,w=slots[wi],locked=!a||!b,done=!!w;
+  return `<div class="match-card ${done?"done":""} ${locked?"locked":"clickable"}">
+    <div class="slot ${w===a&&w?"winner":""} ${!a?"empty":""}" ${!locked&&!done?`onclick="chooseWinner(${mi},0)"`:""}>
+      <span class="seed"></span><div class="song">${a?songText(a):"等待上一场胜者"}</div><span class="pick-dot">${w===a?"✓":(!locked&&!done?"→":"")}</span>
+    </div>
+    <div class="slot ${w===b&&w?"winner":""} ${!b?"empty":""}" ${!locked&&!done?`onclick="chooseWinner(${mi},1)"`:""}>
+      <span class="seed"></span><div class="song">${b?songText(b):"等待上一场胜者"}</div><span class="pick-dot">${w===b?"✓":(!locked&&!done?"→":"")}</span>
+    </div>
+  </div>`;
+}
+function renderRound(cls,title,sub,count,base){
+  const gap=76;
+  const tops={8:Array.from({length:8},(_,i)=>i*gap),
+              4:Array.from({length:4},(_,i)=>38+i*152),
+              2:Array.from({length:2},(_,i)=>114+i*304),
+              1:[266]};
+  let out=`<div class="round ${cls}"><div class="round-title">${title} <small>${sub}</small></div>`;
+  for(let i=0;i<count;i++){
+    let mi=base+i,[a,b]=getMatchSongs(mi);
+    out+=`<div class="match" style="top:${tops[count][i]}px">${matchCard(mi,a,b)}</div>`;
+  }
+  return out+"</div>";
+}
+function renderBracket(){
+  let out="";
+  out+=renderRound("left r1","ROUND OF 16","左半区",8,0);
+  out+=renderRound("left r2","QUARTER-FINALS","8强",4,16);
+  out+=renderRound("left r3","SEMI-FINALS","半决赛",2,24);
+  out+=renderRound("left r4","FINALIST","决赛席位",1,28);
+  out+=`<div class="round r5 center"><div class="round-title">FINAL <small>总决赛</small></div><div class="match" style="top:266px">${matchCard(30,getMatchSongs(30)[0],getMatchSongs(30)[1])}</div></div>`;
+  out+=renderRound("right r4","FINALIST","决赛席位",1,29);
+  out+=renderRound("right r3","SEMI-FINALS","半决赛",2,26);
+  out+=renderRound("right r2","QUARTER-FINALS","8强",4,20);
+  out+=renderRound("right r1","ROUND OF 16","右半区",8,8);
+  document.getElementById("bracket").innerHTML=out;
+  const done=Array.from({length:31},(_,i)=>slots[32+i]).filter(Boolean).length;
+  document.getElementById("statusTitle").textContent=slots[62]?"🏆 今日冠军已经产生":`${done}/31 场已决出`;
+  document.getElementById("statusSub").textContent=slots[62]?"今天的结果已锁定，明天自动更新。":"";
+  if(slots[62])showChampion(slots[62]);
+}
+function chooseWinner(mi,which){
+  const [a,b]=getMatchSongs(mi);
+  if(!a||!b||slots[32+mi])return;
+  const w=which===0?a:b,l=which===0?b:a;
+  slots[32+mi]=w;
+  if(mi===30)slots[62]=w;
+  const stage=mi<16?"16强":mi<24?"8强":mi<28?"半决赛":mi<30?"决赛席位":"总决赛";
+  const side=mi<8?"左半区":mi<16?"右半区":"";
+  history.push(`${side?side+" · ":""}${stage}：${w.title}（${w.artist}）胜过 ${l.title}（${l.artist}）`);
+  document.getElementById("historyList").innerHTML=history.map(x=>`<div>• ${escapeHtml(x)}</div>`).join("");
+  renderBracket();
+}
+function showChampion(s){
+  document.getElementById("championTitle").textContent=s.title;
+  document.getElementById("championArtist").textContent=s.artist;
+  document.getElementById("final").classList.add("show");
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+initTournament();
+</script>
+</body></html>
